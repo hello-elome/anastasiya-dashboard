@@ -135,13 +135,11 @@ kbd { font: 600 11px 'Inter', sans-serif; padding: 1px 6px; border-radius: 5px; 
 .k-verkauf .delta .gut { color: #2F5242; }
 
 .neben { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.shop .neben { grid-template-columns: repeat(2, 1fr); }
 .meta .neben .kachel { background: color-mix(in srgb, var(--m-50) 55%, var(--card)); }
 .shop .neben .kachel { background: color-mix(in srgb, var(--s-50) 55%, var(--card)); }
 .hinweis { font-size: 12px; color: var(--muted); margin: 12px 2px 0; }
 
-/* Zusammen-Leiste */
-.zusammen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
-.zusammen .kachel { background: var(--card); }
 
 /* Diagramme */
 h3.abschnitt { font-size: 24px; margin: 0 0 12px; }
@@ -185,7 +183,6 @@ td.leer { color: var(--muted); }
 @media (max-width: 900px) {
   .spalten { grid-template-columns: 1fr; }
   .charts { grid-template-columns: 1fr; }
-  .zusammen { grid-template-columns: 1fr 1fr; }
   .tasten { text-align: left; }
 }
 @media (max-width: 460px) {
@@ -238,21 +235,23 @@ td.leer { color: var(--muted); }
   </header>
 
   <section class="spalten">
-    <div class="spalte meta">
-      <div class="spalte-kopf"><h2 class="serif"><span class="punkt"></span>Meta Ads</h2><span class="sub" id="metaZeit"></span></div>
-      <div class="haupt" id="metaHaupt"></div>
-      <div class="neben" id="metaNeben"></div>
-      <p class="hinweis">Käufe und Umsatz so, wie Meta sie den Anzeigen zuordnet. Die letzten Tage können sich noch leicht ändern.</p>
-    </div>
     <div class="spalte shop">
       <div class="spalte-kopf"><h2 class="serif"><span class="punkt"></span>Shopify</h2><span class="sub" id="shopZeit"></span></div>
       <div class="haupt" id="shopHaupt"></div>
       <div class="neben" id="shopNeben"></div>
       <p class="hinweis">Alle echten Bestellungen im Shop, ohne Testbestellungen und Stornos.</p>
     </div>
+    <div class="spalte meta">
+      <div class="spalte-kopf"><h2 class="serif"><span class="punkt"></span>Meta Ads</h2><span class="sub" id="metaZeit"></span></div>
+      <div class="haupt" id="metaHaupt"></div>
+      <div class="neben" id="metaNeben"></div>
+      <p class="hinweis">Käufe und Umsatz so, wie Meta sie den Anzeigen zuordnet. Die letzten Tage können sich noch leicht ändern.</p>
+    </div>
   </section>
 
-  <section class="zusammen" id="zusammen"></section>
+  <h3 class="abschnitt serif">Tag für Tag</h3>
+  <div class="card tabelle"><table id="tagTabelle"></table></div>
+
 
   <h3 class="abschnitt serif">Verlauf</h3>
   <section class="charts">
@@ -272,12 +271,6 @@ td.leer { color: var(--muted); }
       <div class="plot" id="c3"></div>
     </div>
   </section>
-
-  <h3 class="abschnitt serif">Tag für Tag</h3>
-  <div class="card tabelle"><table id="tagTabelle"></table></div>
-
-  <h3 class="abschnitt serif">Kampagnen</h3>
-  <div class="card tabelle"><table id="kampTabelle"></table></div>
 </div>
 
 <script>
@@ -424,15 +417,8 @@ function zeichneKacheln(auswahl) {
   $('#shopNeben').innerHTML = [
     kachel('Besucher (Sitzungen)', nurWenn(a.sitz, zahl(a.sitzungen)), delta(nurWenn(a.sitz, a.sitzungen), nurWenn(b.sitz, b.sitzungen))),
     kachel('Conversion Rate', prozent(a.cr), delta(a.cr, b.cr)),
-    kachel('Ø Bestellwert', euro(a.aov), delta(a.aov, b.aov)),
   ].join('');
 
-  $('#zusammen').innerHTML = [
-    kachel('Echter ROAS (Shop-Umsatz ÷ Werbekosten)', faktor(a.roasEcht), delta(a.roasEcht, b.roasEcht)),
-    kachel('Werbekosten pro Shop-Verkauf', euro(a.cpaEcht), delta(a.cpaEcht, b.cpaEcht, false)),
-    kachel('Kosten pro Meta-Kauf', euro(a.cpa), delta(a.cpa, b.cpa, false)),
-    kachel('Anteil Verkäufe durch Werbung', a.meta && a.bestellungen ? prozent(Math.min(1, a.kaeufe / a.bestellungen), 0) : null, '<div class="delta"></div>'),
-  ].join('');
 }
 
 // ---------- Diagramme ----------
@@ -546,27 +532,17 @@ const zelle = (v, k = '') => `<td class="${k}${v == null ? ' leer' : ''}">${v ??
 function zeichneTabellen(auswahl) {
   // Tabelle zeigt immer mindestens 14 Tage bis zum gewaehlten Tag, damit man blaettern kann
   const tage = auswahl.length >= 14 ? auswahl : fenster(TAG, 14);
-  const kopf = `<thead><tr><th></th><th class="gruppe gm" colspan="8">Meta Ads</th><th class="gruppe gs" colspan="4">Shopify</th></tr>
-    <tr><th>Datum</th><th class="gm">Verkäufe</th><th class="gm">Umsatz</th><th class="gm">Werbekosten</th><th class="gm">Gewinn</th><th class="gm">ROAS</th><th class="gm">Outbound</th><th class="gm">Add to Cart</th><th class="gm">CVR</th>
-    <th class="gs">Verkäufe</th><th class="gs">Umsatz</th><th class="gs">Sitzungen</th><th class="gs">CVR</th></tr></thead>`;
+  const kopf = `<thead><tr><th></th><th class="gruppe gs" colspan="4">Shopify</th><th class="gruppe gm" colspan="8">Meta Ads</th></tr>
+    <tr><th>Datum</th><th class="gs">Verkäufe</th><th class="gs">Umsatz</th><th class="gs">Sitzungen</th><th class="gs">CVR</th>
+    <th class="gm">Verkäufe</th><th class="gm">Umsatz</th><th class="gm">Werbekosten</th><th class="gm">Gewinn</th><th class="gm">ROAS</th><th class="gm">Outbound</th><th class="gm">Add to Cart</th><th class="gm">CVR</th></tr></thead>`;
   const zeile = (label, s, attr = '') => `<tr ${attr}><td>${label}</td>` +
+    zelle(zahl(s.bestellungen), 'gs') + zelle(euro(s.umsatz), 'gs') + zelle(nurWenn(s.sitz, zahl(s.sitzungen)), 'gs') + zelle(prozent(s.cr), 'gs') +
     zelle(nurWenn(s.meta, zahl(s.kaeufe)), 'gm') + zelle(nurWenn(s.meta, euro(s.metaUmsatz)), 'gm') + zelle(nurWenn(s.meta, euro(s.ausgaben)), 'gm') +
-    zelle(euro(s.gewinn), 'gm') + zelle(faktor(s.roas), 'gm') + zelle(nurWenn(s.out, zahl(s.outbound)), 'gm') + zelle(nurWenn(s.wk, zahl(s.warenkorb)), 'gm') + zelle(prozent(s.crMeta), 'gm') +
-    zelle(zahl(s.bestellungen), 'gs') + zelle(euro(s.umsatz), 'gs') + zelle(nurWenn(s.sitz, zahl(s.sitzungen)), 'gs') + zelle(prozent(s.cr), 'gs') + '</tr>';
+    zelle(euro(s.gewinn), 'gm') + zelle(faktor(s.roas), 'gm') + zelle(nurWenn(s.out, zahl(s.outbound)), 'gm') + zelle(nurWenn(s.wk, zahl(s.warenkorb)), 'gm') + zelle(prozent(s.crMeta), 'gm') + '</tr>';
   const zeilen = [...tage].reverse().map((t) => zeile(tagMittel(t), summe([t]), `data-tag="${t}" class="${t === TAG ? 'aktiv' : ''}"`));
   if (auswahl.length > 1) zeilen.push(zeile(`Summe ${zeitraumText(auswahl)}`, summe(auswahl), 'class="summe"'));
   $('#tagTabelle').innerHTML = kopf + '<tbody>' + zeilen.join('') + '</tbody>';
 
-  const kamp = {};
-  for (const t of auswahl) for (const k of (DATEN.kampagnen?.[t] || [])) {
-    const z = (kamp[k.name] ||= { ausgaben: 0, kaeufe: 0, umsatz: 0, outbound: 0 });
-    z.ausgaben += k.ausgaben; z.kaeufe += k.kaeufe; z.umsatz += k.umsatz; z.outbound += k.outbound || 0;
-  }
-  const liste = Object.entries(kamp).sort((a, b) => b[1].ausgaben - a[1].ausgaben);
-  $('#kampTabelle').innerHTML = liste.length
-    ? `<thead><tr><th>Kampagne · ${esc(zeitraumText(auswahl))}</th><th>Werbekosten</th><th>Verkäufe</th><th>Umsatz</th><th>ROAS</th><th>Outbound</th><th>Kosten pro Kauf</th></tr></thead><tbody>` +
-      liste.map(([name, z]) => `<tr><td>${esc(name)}</td>${zelle(euro(z.ausgaben))}${zelle(zahl(z.kaeufe))}${zelle(euro(z.umsatz))}${zelle(z.ausgaben ? faktor(z.umsatz / z.ausgaben) : null)}${zelle(zahl(z.outbound))}${zelle(z.kaeufe ? euro(z.ausgaben / z.kaeufe) : null)}</tr>`).join('') + '</tbody>'
-    : `<tbody><tr><td class="leer">In diesem Zeitraum liefen keine Kampagnen mit Ausgaben.</td></tr></tbody>`;
 }
 
 // ---------- Ablauf ----------
