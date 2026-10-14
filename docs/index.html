@@ -225,6 +225,7 @@ td.leer { color: var(--muted); }
         <button id="vor" aria-label="Einen Tag weiter">›</button>
       </div>
       <div class="seg" id="zeitraum" role="group" aria-label="Zeitraum">
+        <button data-z="gestern">Gestern</button>
         <button data-z="1">Tag</button>
         <button data-z="7">7 Tage</button>
         <button data-z="30">30 Tage</button>
@@ -551,7 +552,9 @@ function zeichne() {
   if (!tage.length) { $('#metaHaupt').innerHTML = '<p class="sub">Noch keine Daten vorhanden.</p>'; return; }
   if (!TAG || !DATEN.tage[TAG]) TAG = tage.at(-1);
   const auswahl = fenster(TAG, ZEITRAUM);
-  document.querySelectorAll('#zeitraum button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.z === ZEITRAUM));
+  const istGestern = ZEITRAUM === '1' && TAG === tage.at(-1);
+  document.querySelectorAll('#zeitraum button').forEach((b) => b.setAttribute('aria-pressed',
+    b.dataset.z === 'gestern' ? istGestern : b.dataset.z === ZEITRAUM && !(b.dataset.z === '1' && istGestern)));
   $('#tagText').textContent = tagLang(TAG);
   $('#tagWahl').value = TAG; $('#tagWahl').min = tage[0]; $('#tagWahl').max = tage.at(-1);
   $('#zurueck').disabled = TAG === tage[0];
@@ -588,7 +591,9 @@ function starte() {
 
 $('#zeitraum').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  ZEITRAUM = b.dataset.z;
+  // Gestern = Tagesansicht auf dem letzten vorhandenen Tag
+  if (b.dataset.z === 'gestern') { ZEITRAUM = '1'; TAG = alleTage().at(-1); }
+  else ZEITRAUM = b.dataset.z;
   try { localStorage.setItem('tagesdashboard-zeitraum2', ZEITRAUM); } catch {}
   zeichne();
 });
@@ -598,7 +603,7 @@ $('#tagWahl').addEventListener('change', (e) => setzeTag(e.target.value));
 $('#tagLabel').addEventListener('click', () => { try { $('#tagWahl').showPicker(); } catch {} });
 $('#tagTabelle').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-tag]'); if (tr) setzeTag(tr.dataset.tag); });
 addEventListener('keydown', (e) => {
-  if ($('#app').hidden || e.target.matches('input, textarea') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if ($('#app').hidden || e.target.matches?.('input, textarea') || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); schritt(-1); }
   if (e.key === 'ArrowRight') { e.preventDefault(); schritt(1); }
 });
