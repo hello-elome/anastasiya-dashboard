@@ -174,15 +174,18 @@ async function shopifyBesucher(gql, tage) {
 
 // ---------- Meta ----------
 
+// Meta meldet dieselbe Aktion oft mehrfach (omni_, Pixel, App); wir nehmen den ersten vorhandenen Typ
 const KAUF_TYPEN = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
-function kaufWert(liste) {
+const WARENKORB_TYPEN = ['omni_add_to_cart', 'add_to_cart', 'offsite_conversion.fb_pixel_add_to_cart'];
+function aktionWert(liste, typen = KAUF_TYPEN) {
   if (!Array.isArray(liste)) return 0;
-  for (const typ of KAUF_TYPEN) {
+  for (const typ of typen) {
     const treffer = liste.find((a) => a.action_type === typ);
     if (treffer) return Number(treffer.value);
   }
   return 0;
 }
+const kaufWert = (liste) => aktionWert(liste, KAUF_TYPEN);
 
 async function metaAlle(url) {
   const zeilen = [];
@@ -204,7 +207,7 @@ async function metaInsights(tage) {
     level,
     time_increment: '1',
     time_range: JSON.stringify({ since: tage[0], until: tage.at(-1) }),
-    fields: 'campaign_name,spend,impressions,clicks,inline_link_clicks,actions,action_values',
+    fields: 'campaign_name,spend,impressions,clicks,inline_link_clicks,outbound_clicks,actions,action_values',
     limit: '500',
     access_token: env('META_ACCESS_TOKEN'),
   });
@@ -216,6 +219,8 @@ async function metaInsights(tage) {
     umsatz: kaufWert(z.action_values),
     impressionen: Number(z.impressions || 0),
     linkklicks: Number(z.inline_link_clicks || 0),
+    outbound: aktionWert(z.outbound_clicks, ['outbound_click']),
+    warenkorb: aktionWert(z.actions, WARENKORB_TYPEN),
   });
 
   const konten = await metaAlle(`${basis}?${parameter('account')}`);
@@ -265,7 +270,7 @@ async function main() {
     const alt = bestand.tage[tag] || {};
     bestand.tage[tag] = {
       shop: { ...bestellungen[tag], ...(besucher[tag] || alt.shop && { sitzungen: alt.shop.sitzungen, besucher: alt.shop.besucher }) },
-      meta: meta ? (meta.proTag[tag] || { ausgaben: 0, kaeufe: 0, umsatz: 0, impressionen: 0, linkklicks: 0 }) : alt.meta || null,
+      meta: meta ? (meta.proTag[tag] || { ausgaben: 0, kaeufe: 0, umsatz: 0, impressionen: 0, linkklicks: 0, outbound: 0, warenkorb: 0 }) : alt.meta || null,
     };
     if (meta) bestand.kampagnen[tag] = meta.kampagnen[tag] || [];
   }
