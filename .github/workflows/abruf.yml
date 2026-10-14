@@ -1,0 +1,47 @@
+name: Naechtlicher Abruf
+
+on:
+  schedule:
+    # GitHub rechnet in UTC. 22:05 UTC = 0:05 Uhr Sommerzeit, 23:05 UTC = 0:05 Uhr Winterzeit.
+    # Beide Laeufe sind harmlos, der Abruf ueberschreibt nur dieselben Tage.
+    - cron: '5 22 * * *'
+    - cron: '5 23 * * *'
+  workflow_dispatch:
+    inputs:
+      tage:
+        description: 'Wie viele Tage zurueck neu holen (leer = automatisch)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abruf
+  cancel-in-progress: false
+
+jobs:
+  abruf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Zahlen von Shopify und Meta holen
+        run: node scripts/abruf.mjs
+        env:
+          DASHBOARD_PASSWORT: ${{ secrets.DASHBOARD_PASSWORT }}
+          SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          TAGE: ${{ github.event.inputs.tage }}
+      - name: Daten speichern
+        run: |
+          git config user.name "dashboard-bot"
+          git config user.email "dashboard-bot@users.noreply.github.com"
+          git add docs/daten.enc.json
+          git diff --cached --quiet || git commit -m "Daten $(date -u +%F)"
+          git push
